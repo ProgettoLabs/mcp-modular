@@ -1,0 +1,33 @@
+MIT Campus Coca-Cola Availability
+===================================
+
+VENDING MACHINES
+-----------------
+- Building 7 (Rogers Building), Lobby — 24/7
+- Building 16 (Dorrance), 1st Floor — 24/7
+- Building 32 (Stata Center), 2nd Floor — 24/7
+- Building 36 (Research Lab of Electronics), Ground Floor — 24/7
+- Building 56 (Whitaker Health Sciences), Lobby — 7am–10pm
+- Maseeh Hall (W1), Basement — 24/7
+- Next House (W71), Common Room — 24/7
+- McCormick Hall (W4), Lobby — 24/7
+
+DINING HALLS (fountain drinks available during meal service)
+-------------------------------------------------------------
+- Maseeh Hall Dining — Mon–Fri 7am–8pm, Sat–Sun 9am–7pm
+- Next House Dining — Mon–Fri 11am–2pm, 5pm–8pm
+- Baker House Dining — Mon–Fri 7:30am–7:30pm
+
+CAFES & RETAIL
+--------------
+- Lobdell Food Court (W20, Stratton Student Center) — Mon–Fri 8am–4pm
+- Hayden Library Cafe — Mon–Thu 8am–6pm, Fri 8am–4pm
+- Koch Institute Cafe (Building 76) — Mon–Fri 8am–3pm
+- MIT Medical Cafe (E23) — Mon–Fri 7:30am–3pm
+
+NOTES
+-----
+- All vending machines accept credit/debit cards and MIT TechCash.
+- Product availability may vary by machine. Classic Coke, Diet Coke,
+  Coke Zero, and Sprite are stocked at all locations.
+- For restocking requests or machine issues contact: facilities@mit.edu

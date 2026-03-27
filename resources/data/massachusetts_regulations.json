@@ -1,0 +1,56 @@
+{
+  "bottle-bill": {
+    "title": "Massachusetts Bottle Bill (M.G.L. c. 94, § 321–327)",
+    "summary": "Requires a 5-cent deposit on carbonated soft drink containers (glass, metal, plastic) sold in Massachusetts. Consumers redeem deposits at retailers or redemption centers.",
+    "applies_to": ["carbonated soft drinks", "beer", "malt beverages"],
+    "deposit_amount_usd": 0.05,
+    "effective_date": "1983-01-17",
+    "key_requirements": [
+      "Distributors must collect deposits from retailers",
+      "Retailers must accept returns and refund deposits",
+      "Containers must display Massachusetts deposit mark",
+      "Unclaimed deposits are remitted to the state after 30 days"
+    ],
+    "agency": "Massachusetts Department of Environmental Protection (MassDEP)",
+    "reference_url": "https://www.mass.gov/bottle-bill"
+  },
+  "sugar-tax": {
+    "title": "No Statewide Beverage Sugar Tax (as of 2024)",
+    "summary": "Massachusetts does not currently impose a statewide excise tax on sugar-sweetened beverages. Several municipalities have explored local ordinances, but none have passed as of 2024.",
+    "applies_to": ["sugar-sweetened beverages"],
+    "status": "No active legislation",
+    "notes": [
+      "Boston City Council explored a sugar tax proposal in 2022 — did not advance",
+      "State legislature has seen periodic bills filed; none enacted",
+      "Coca-Cola products are subject to standard Massachusetts 6.25% sales tax when sold as a prepared beverage"
+    ],
+    "agency": "Massachusetts Department of Revenue (DOR)",
+    "reference_url": "https://www.mass.gov/sales-tax"
+  },
+  "labeling": {
+    "title": "Beverage Labeling Requirements (105 CMR 500–599)",
+    "summary": "Massachusetts adopts FDA federal labeling standards for packaged beverages. Additional state rules apply to caffeine disclosures in energy drinks sold at retail.",
+    "applies_to": ["all packaged beverages"],
+    "key_requirements": [
+      "Nutrition facts panel required per FDA 21 CFR Part 101",
+      "Ingredient list in descending order by weight",
+      "Allergen declarations per FALCPA",
+      "Energy drinks with caffeine > 71mg per 12oz must display caffeine content on label"
+    ],
+    "agency": "Massachusetts Department of Public Health (DPH)",
+    "reference_url": "https://www.mass.gov/dph-food-safety"
+  },
+  "school-sales": {
+    "title": "School Nutrition Standards (603 CMR 29.00)",
+    "summary": "Restricts the sale of sugary beverages in Massachusetts public schools during the school day. Applies to vending machines, school stores, and a la carte lines.",
+    "applies_to": ["sugary beverages", "vending machines in schools"],
+    "restrictions": [
+      "No sugar-sweetened sodas sold during school hours (K–12)",
+      "Allowed beverages: water, plain milk, 100% juice (≤8oz for elementary, ≤12oz for secondary)",
+      "Sports drinks permitted only for competitive athletes during/after practice"
+    ],
+    "effective_date": "2012-08-01",
+    "agency": "Massachusetts Department of Elementary and Secondary Education (DESE)",
+    "reference_url": "https://www.doe.mass.edu/cnp/wellness"
+  }
+}
