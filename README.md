@@ -116,6 +116,30 @@ This name is how the server identifies itself to MCP clients.
 
 ---
 
+## Running the Client
+
+`client.py` is an interactive chat application powered by Ollama (`llama3.1:8b`). It connects to the MCP server, exposes all registered tools to the model, and runs a conversation loop until you type `exit` or `quit`.
+
+**Prerequisites:** [Ollama](https://ollama.com) must be running locally with the `llama3.1:8b` model pulled:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+**Start the client** (while the server is running):
+
+```bash
+python client.py
+```
+
+Override the server address with environment variables:
+
+```bash
+MCP_HOST=127.0.0.1 MCP_PORT=9000 python client.py
+```
+
+---
+
 ## Running the Server
 
 The server supports two transports: **SSE** (default) and **stdio**.
