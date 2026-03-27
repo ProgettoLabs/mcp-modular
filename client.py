@@ -1,190 +1,117 @@
 import asyncio
 import os
-import re
 import ollama
 from mcp import ClientSession
 from mcp.client.sse import sse_client
+from client_helper import (
+    process_server_capabilities,
+    print_capabilities,
+    parse_prompt_command,
+    parse_resource_mentions,
+    c, BOLD, BLUE, DIM, YELLOW, GREEN,
+)
 
-RESOURCE_PATTERN = re.compile(r'@(\S+)')
-PROMPT_PATTERN = re.compile(r'/(\w+)((?:\s+\w+=\S+)*)\s*$')
-KWARG_PATTERN = re.compile(r'(\w+)=(\S+)')
-
-
-def uri_template_to_regex(template):
-    """Convert a URI template like 'myapp://data/{id}' to a compiled regex."""
-    escaped = re.escape(template)
-    pattern = re.sub(r'\\\{(\w+)\\\}', r'(?P<\1>[^/]+)', escaped)
-    return re.compile(f'^{pattern}$')
-
-
-def build_tools_for_ollama(tools):
-    """Convert MCP tools to the format ollama expects."""
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description or "",
-                "parameters": tool.inputSchema,
-            },
-        }
-        for tool in tools
-    ]
-
-
-async def load_server_capabilities(session):
-    """Fetch tools, resources, resource templates, and prompts from the MCP server."""
-    tools_resp, resources_resp, templates_resp, prompts_resp = await asyncio.gather(
-        session.list_tools(),
-        session.list_resources(),
-        session.list_resource_templates(),
-        session.list_prompts(),
-    )
-
-    ollama_tools = build_tools_for_ollama(tools_resp.tools)
-    known_uris = {str(r.uri) for r in resources_resp.resources}
-    known_templates = [str(t.uriTemplate) for t in templates_resp.resourceTemplates]
-    template_regexes = [uri_template_to_regex(t) for t in known_templates]
-    known_prompts = {p.name for p in prompts_resp.prompts}
-
-    return ollama_tools, known_uris, known_templates, template_regexes, known_prompts
-
-
-def print_capabilities(known_uris, known_templates, known_prompts):
-    print("MCP chat ready. Type 'exit' or 'quit' to stop.")
-    if known_uris:
-        print(f"  Resources:          {', '.join(sorted(known_uris))}")
-    if known_templates:
-        print(f"  Resource templates: {', '.join(sorted(known_templates))}")
-    if known_prompts:
-        print(f"  Prompts:            {', '.join(sorted(known_prompts))}")
-    print()
-
-
-async def call_mcp_tool(session, name, arguments):
-    result = await session.call_tool(name, arguments)
-    return "\n".join(
-        block.text for block in result.content if hasattr(block, "text")
-    )
-
-
-async def resolve_resources(session, user_input, known_uris, template_regexes):
-    """Fetch any @uri references in user_input. Returns extra context string."""
-    mentions = RESOURCE_PATTERN.findall(user_input)
-    if not mentions:
-        return None
-
-    parts = []
-    for uri in mentions:
-        if uri in known_uris:
-            print(f"  [fetching resource: {uri}]")
-            result = await session.read_resource(uri)
-        elif any(r.match(uri) for r in template_regexes):
-            print(f"  [fetching resource (template): {uri}]")
-            result = await session.read_resource(uri)
-        else:
-            print(f"  [unknown resource: {uri}]")
-            continue
-
-        content_text = "\n".join(
-            block.text for block in result.contents if hasattr(block, "text")
-        )
-        parts.append(f"Resource {uri}:\n{content_text}")
-
-    return "\n\n".join(parts) if parts else None
-
-
-async def resolve_prompt(session, user_input, known_prompts):
-    """If user_input is /promptname [key=val ...], fetch and return its messages."""
-    match = PROMPT_PATTERN.match(user_input.strip())
-    if not match or match.group(1) not in known_prompts:
-        return None
-
-    prompt_name = match.group(1)
-    arguments = {k: v for k, v in KWARG_PATTERN.findall(match.group(2))}
-
-    print(f"  [fetching prompt: {prompt_name} {arguments}]")
-    result = await session.get_prompt(prompt_name, arguments=arguments if arguments else None)
-
-    return [
-        {"role": msg.role, "content": msg.content.text}
-        for msg in result.messages
-        if hasattr(msg.content, "text")
-    ]
+MODEL = "llama3.1:8b"
 
 
 async def build_user_turn(session, user_input, known_uris, template_regexes, known_prompts):
-    """Parse user input and return messages to append to the conversation."""
-    prompt_messages = await resolve_prompt(session, user_input, known_prompts)
-    if prompt_messages is not None:
-        return prompt_messages
+    # If the input is a prompt command (/name key=val), fetch it from the server and return its messages directly
+    parsed = parse_prompt_command(user_input, known_prompts)
+    if parsed is not None:
+        prompt_name, arguments = parsed
+        print(c(f"  ↳ fetching prompt: {prompt_name} {arguments}", DIM, YELLOW))
+        result = await session.get_prompt(prompt_name, arguments=arguments if arguments else None)
+        return [{"role": msg.role, "content": msg.content.text} for msg in result.messages if hasattr(msg.content, "text")]
 
-    resource_context = await resolve_resources(session, user_input, known_uris, template_regexes)
+    # Otherwise, fetch any @uri resources mentioned and prepend them as context
+    parts = []
+    for uri, is_template in parse_resource_mentions(user_input, known_uris, template_regexes):
+        label = " (template)" if is_template else ""
+        print(c(f"  ↳ fetching resource{label}: {uri}", DIM, YELLOW))
+        result = await session.read_resource(uri)
+        content_text = "\n".join(block.text for block in result.contents if hasattr(block, "text"))
+        parts.append(f"Resource {uri}:\n{content_text}")
+
+    # Attach fetched resource content to the message, or send the raw input if none
+    resource_context = "\n\n".join(parts) if parts else None
     content = f"{user_input}\n\n{resource_context}" if resource_context else user_input
     return [{"role": "user", "content": content}]
 
 
 async def run_ollama_turn(session, messages, ollama_tools):
-    """Send messages to ollama, execute any tool calls, and return when the model is done."""
+    # Keep looping until the model produces a plain text response with no tool calls
     while True:
-        response = ollama.chat(
-            model="llama3.1:8b",
-            messages=messages,
-            tools=ollama_tools if ollama_tools else None,
-        )
-
+        response = ollama.chat(model=MODEL, messages=messages, tools=ollama_tools or None)
         assistant_message = response.message
         messages.append(assistant_message)
 
+        # No tool calls — the model is done, print the response and exit
         if not assistant_message.tool_calls:
-            print(f"\nAssistant: {assistant_message.content}\n")
+            print()
+            print(c("Assistant: ", BOLD, GREEN) + assistant_message.content)
+            print()
             return
 
+        # Execute each requested tool call and feed the results back for the next iteration
         for tool_call in assistant_message.tool_calls:
             tool_name = tool_call.function.name
             tool_args = dict(tool_call.function.arguments)
-            print(f"  [calling tool: {tool_name}]")
-            result = await call_mcp_tool(session, tool_name, tool_args)
-            messages.append({"role": "tool", "content": result})
+            print(c(f"  ⚙ calling tool: {tool_name}", DIM, YELLOW))
+            result = await session.call_tool(tool_name, tool_args)
+            result_text = "\n".join(block.text for block in result.content if hasattr(block, "text"))
+            messages.append({"role": "tool", "content": result_text})
 
 
 async def chat_loop(session, ollama_tools, known_uris, template_regexes, known_prompts):
-    """Main interactive loop."""
     messages = []
 
     while True:
+        # Read user input, exiting gracefully on Ctrl-C or EOF
         try:
-            user_input = input("You: ").strip()
+            user_input = input(c("You: ", BOLD, BLUE)).strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nGoodbye!")
+            print(c("\nGoodbye!", DIM))
             return
 
+        # Exit on explicit quit command
         if user_input.lower() in ("exit", "quit"):
-            print("Goodbye!")
+            print(c("Goodbye!", DIM))
             return
 
+        # Skip blank lines
         if not user_input:
             continue
 
+        # Build the user turn (resolving any prompts/resources) then get the model's response
         turn = await build_user_turn(session, user_input, known_uris, template_regexes, known_prompts)
         messages.extend(turn)
         await run_ollama_turn(session, messages, ollama_tools)
 
 
 async def main():
+    # Connect to the MCP server
     host = os.getenv("MCP_HOST", "localhost")
     port = int(os.getenv("MCP_PORT", "8000"))
     url = f"http://{host}:{port}/sse"
 
-    print(f"Connecting to MCP server at {url}...\n")
+    print(c(f"Connecting to MCP server at {url}…", DIM))
 
     async with sse_client(url) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
+            # Query the MCP server for all available tools, resources, and prompts
+            tools_resp, resources_resp, templates_resp, prompts_resp = await asyncio.gather(
+                session.list_tools(),
+                session.list_resources(),
+                session.list_resource_templates(),
+                session.list_prompts(),
+            )
+            # Transform the raw responses into the data structures the client needs
             ollama_tools, known_uris, known_templates, template_regexes, known_prompts = \
-                await load_server_capabilities(session)
+                process_server_capabilities(tools_resp, resources_resp, templates_resp, prompts_resp)
 
+            # Show the user what resources and prompts are available before starting
             print_capabilities(known_uris, known_templates, known_prompts)
 
             await chat_loop(session, ollama_tools, known_uris, template_regexes, known_prompts)
