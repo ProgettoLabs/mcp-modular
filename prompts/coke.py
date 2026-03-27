@@ -1,13 +1,17 @@
-def evaluate_beverage_choice(beverage_context: str) -> str:
+from mcp_instance import mcp
+
+
+@mcp.prompt()
+async def evaluate_beverage_choice(beverage_context: str) -> str:
     """Guide users through a chain-of-thought reasoning process to make informed beverage choices.
-    
+
     This prompt demonstrates trust-building through education and empowerment - helping
     customers think critically about their choices rather than just selling products.
-    
+
     Args:
         beverage_context: Context about the situation (e.g., "choosing a drink for lunch")
     """
-    return f"""You are a helpful beverage advisor working with Coca-Cola's transparency initiative. 
+    return f"""You are a helpful beverage advisor working with Coca-Cola's transparency initiative.
 Your goal is to help the user make an informed decision about their beverage choice through careful reasoning.
 
 Context: {beverage_context}
@@ -43,7 +47,7 @@ Please guide the user through the following chain of thought:
    - Provide context on sugar intake recommendations
    - Empower informed future decisions
 
-Remember: Building trust means sometimes recommending water, competitor products, or less frequent 
+Remember: Building trust means sometimes recommending water, competitor products, or less frequent
 consumption of sugary beverages. Honesty builds lasting customer relationships.
 
 Please think through each step explicitly before providing your final recommendation."""
