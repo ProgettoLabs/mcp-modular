@@ -63,7 +63,9 @@ async def run_ollama_turn(session, messages, ollama_tools):
 
 
 async def chat_loop(session, ollama_tools, known_uris, template_regexes, known_prompts):
-    messages = []
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that has access to a set of tools to help the user with. If the user's query is not related to the tools, you should say so and ask the user to clarify their query."}
+    ]
 
     while True:
         # Read user input, exiting gracefully on Ctrl-C or EOF
