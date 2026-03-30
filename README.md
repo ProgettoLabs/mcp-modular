@@ -102,6 +102,22 @@ Use the `mcp` object to register your handlers with `@mcp.tool()`, `@mcp.prompt(
 
 ---
 
+## Sample Email Tools
+
+The project includes sample tools for reading and sending emails (`tools/email_reader.py` and `tools/email_sender.py`). If you want to use these tools, you need to set up your credentials in `.credentials/mail_credentials.yaml`:
+
+```yaml
+imap_host: imap.gmail.com # or any other IMAP server
+smtp_host: smtp.gmail.com # or any other SMTP server
+email_user: your_email@gmail.com
+email_password: your_password_here
+recipient_email: recipient_email@example.com
+```
+
+**Important Note on Passwords:** The `email_password` field is usually an **App Password**, which is different from your standard login password. If you are using Gmail, you can find instructions on how to generate an app password here: [Sign in with app passwords - Gmail Help](https://support.google.com/mail/answer/185833?hl=en).
+
+---
+
 ## Changing the Server Name
 
 Open [mcp_instance.py](mcp_instance.py) and update the string passed to `FastMCP`:
