@@ -1,17 +1,7 @@
 import smtplib
 from email.message import EmailMessage
-from pathlib import Path
 
-import yaml
-from mcp_instance import mcp
-
-_CREDS_PATH = Path(__file__).parent.parent / ".credentials" / "mail_credentials.yaml"
-
-
-def _load_credentials():
-    with open(_CREDS_PATH) as f:
-        return yaml.safe_load(f)
-
+from mcp_instance import mcp, load_email_credentials
 
 @mcp.tool()
 def send_email(subject: str, body: str) -> str:
@@ -27,7 +17,7 @@ def send_email(subject: str, body: str) -> str:
     Returns:
         A string indicating the success or failure of the email sending operation.
     """
-    creds = _load_credentials()
+    creds = load_email_credentials()
     
     msg = EmailMessage()
     msg.set_content(body)

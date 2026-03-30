@@ -118,6 +118,27 @@ recipient_email: recipient_email@example.com
 
 ---
 
+## File Access Tools
+
+The project includes three tools for interacting with the local file system in a restricted manner:
+- `list_files`: Lists all files within the allowed directory.
+- `read_file`: Reads the contents of a specific file.
+- `create_file`: Creates or overwrites a file with new content.
+
+To use these tools, you must configure the allowed directory path in `.credentials/file_access.yaml`:
+
+```yaml
+access_dir: /path/to/your/allowed/directory
+```
+
+### Helper Functions
+
+For both the email and file access tools, the credentials and configuration loading logic is centralized in `mcp_instance.py` via two helper functions:
+- `get_access_dir()`: Reads the allowed directory path from `file_access.yaml`.
+- `load_email_credentials()`: Loads the email configuration from `mail_credentials.yaml`.
+
+---
+
 ## Changing the Server Name
 
 Open [mcp_instance.py](mcp_instance.py) and update the string passed to `FastMCP`:
