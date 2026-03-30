@@ -1,0 +1,730 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+
+% ── Color palette ──────────────────────────────────────────────────────────────
+\definecolor{codebg}{HTML}{F5F5F5}
+\definecolor{codeframe}{HTML}{CCCCCC}
+\definecolor{kwcolor}{HTML}{0000CC}
+\definecolor{strcolor}{HTML}{CC0000}
+\definecolor{cmtcolor}{HTML}{007700}
+\definecolor{numcolor}{HTML}{AA00AA}
+\definecolor{builtincolor}{HTML}{CC6600}
+\definecolor{decocolor}{HTML}{AA007F}
+\definecolor{accentblue}{HTML}{1A1A6E}
+
+% ── listings: Python style ─────────────────────────────────────────────────────
+\lstdefinestyle{python}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  framesep=6pt,
+  xleftmargin=10pt,
+  xrightmargin=10pt,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kwcolor}\bfseries,
+  stringstyle=\color{strcolor},
+  commentstyle=\color{cmtcolor}\itshape,
+  numberstyle=\tiny\color{gray},
+  numbers=left,
+  numbersep=8pt,
+  stepnumber=1,
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4,
+  captionpos=b,
+  morekeywords={async, await, True, False, None},
+  emph={@mcp.tool, @mcp.resource, @mcp.prompt},
+  emphstyle=\color{decocolor}\bfseries,
+  literate={->}{{\texttt{->}}}{2},
+}
+
+\lstset{style=python}
+
+% ── hyperref ───────────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accentblue,
+  urlcolor=accentblue,
+  citecolor=accentblue,
+  pdftitle={mcp-modular Developer Guide},
+  pdfauthor={mcp-modular},
+}
+
+% ── headers / footers ──────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{mcp-modular}}
+\fancyhead[R]{\small\textit{Developer Guide}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── title ──────────────────────────────────────────────────────────────────────
+\title{%
+  {\Large\bfseries mcp-modular}\\[4pt]
+  {\large Developer Guide}
+}
+\author{}
+\date{}
+
+% ───────────────────────────────────────────────────────────────────────────────
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Overview}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\textbf{mcp-modular} is a modular \href{https://modelcontextprotocol.io}{Model Context Protocol (MCP)} server built with \href{https://github.com/jlowin/fastmcp}{FastMCP}. It pairs with a terminal chat client backed by \href{https://ollama.com}{Ollama} to provide a local, extensible AI assistant that can call tools, serve resources, and inject structured prompts.
+
+The defining characteristic of this project is \textbf{automatic module discovery}: you drop a new Python file into the right folder and the server picks it up on the next start — no registration, no imports to edit.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Prerequisites}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{itemize}[leftmargin=2em]
+  \item Python 3.11 or later
+  \item \href{https://ollama.com/download}{Ollama} installed and running locally
+  \item The \texttt{llama3.1:8b} model pulled in Ollama: \texttt{ollama pull llama3.1:8b}
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Setup}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Clone and install}
+
+Create a virtual environment, activate it, and install the dependencies declared in \texttt{requirements.txt}:
+
+\begin{lstlisting}[language=bash, style=python, numbers=none]
+git clone <repo-url> mcp-modular
+cd mcp-modular
+
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+\end{lstlisting}
+
+The only runtime dependencies are:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Package & Version \\
+\midrule
+\texttt{mcp} & 1.26.0 \\
+\texttt{ollama} & 0.6.1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Start the server}
+
+\begin{lstlisting}[language=bash, style=python, numbers=none]
+python server.py
+\end{lstlisting}
+
+By default the server listens on \texttt{0.0.0.0:8000} using the SSE transport. You can override this with environment variables:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Variable & Default & Effect \\
+\midrule
+\texttt{MCP\_HOST} & \texttt{0.0.0.0} & Bind address \\
+\texttt{MCP\_PORT} & \texttt{8000} & TCP port \\
+\texttt{MCP\_TRANSPORT} & \texttt{sse} & Transport (\texttt{sse} or \texttt{stdio}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Start the client}
+
+In a separate terminal (with the virtual environment activated):
+
+\begin{lstlisting}[language=bash, style=python, numbers=none]
+python client.py
+\end{lstlisting}
+
+The client connects to \texttt{http://localhost:8000/sse} by default. Adjust with \texttt{MCP\_HOST} and \texttt{MCP\_PORT} as needed.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Project Structure}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{lstlisting}[language=bash, style=python, numbers=none]
+mcp-modular/
+|-- mcp_instance.py        # Shared FastMCP instance
+|-- server.py              # Server entry point + auto-discovery
+|-- client.py              # Interactive chat client
+|-- client_helper.py       # Parsing and formatting utilities
+|-- requirements.txt
+|
+|-- tools/                 # @mcp.tool() modules
+|   |-- __init__.py
+|   |-- coke_product_transparency.py
+|   `-- coke_crisis_protocol.py
+|
+|-- resources/             # @mcp.resource() modules
+|   |-- __init__.py
+|   |-- coke_advertisements.py
+|   |-- coke_campus_locations.py
+|   |-- coke_regulations.py
+|   `-- data/              # Static data files consumed by resources
+|       |-- massachusetts_regulations.json
+|       `-- mit_campus.txt
+|
+|-- prompts/               # @mcp.prompt() modules
+|   |-- __init__.py
+|   `-- coke_evaluate_beverage.py
+|
+`-- documentation/
+    `-- guide.tex
+\end{lstlisting}
+
+\subsection{Folder descriptions}
+
+\begin{description}[leftmargin=3em, style=nextline]
+  \item[\texttt{tools/}]
+    Each file defines one or more \emph{tools} — callable functions that the LLM can invoke to perform actions or look up data. Decorated with \lstinline{@mcp.tool()}.
+
+  \item[\texttt{resources/}]
+    Each file exposes one or more \emph{resources} — read-only content endpoints addressable by a URI. Resources can be static (fixed URI) or templated (URI with \texttt{\{param\}} placeholders). Decorated with \lstinline{@mcp.resource("scheme://path")}.
+
+  \item[\texttt{prompts/}]
+    Each file defines one or more \emph{prompts} — reusable message templates that the client can inject into the conversation. Decorated with \lstinline{@mcp.prompt()}.
+
+  \item[\texttt{resources/data/}]
+    Static data files (JSON, plain text) loaded at runtime by the resource modules. Not auto-discovered; loaded explicitly by their owning module.
+
+  \item[\texttt{mcp\_instance.py}]
+    The single source of truth for the \lstinline{FastMCP} object. Importing from here ensures every module shares the same server instance.
+
+  \item[\texttt{server.py}]
+    Discovers and loads all modules, then starts the transport.
+
+  \item[\texttt{client.py}]
+    Interactive terminal chat backed by Ollama.
+
+  \item[\texttt{client\_helper.py}]
+    Parsing and ANSI-color utilities used by the client (see Appendix \ref{appendix:client_helper}).
+\end{description}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{The Server (\texttt{server.py})}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{lstlisting}[caption={server.py}]
+import os
+import importlib
+import pkgutil
+
+import prompts
+import tools
+import resources
+from mcp_instance import mcp
+
+for pkg in [prompts, tools, resources]:
+    for _, name, _ in pkgutil.iter_modules(pkg.__path__, pkg.__name__ + "."):
+        importlib.import_module(name)
+
+
+def main():
+    transport = os.getenv("MCP_TRANSPORT", "sse")
+
+    if transport == "sse":
+        mcp.settings.host = os.getenv("MCP_HOST", "0.0.0.0")
+        mcp.settings.port = int(os.getenv("MCP_PORT", "8000"))
+        mcp.run(transport="sse")
+    else:
+        mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+\paragraph{Auto-discovery loop (lines 7--9).}
+\texttt{pkgutil.iter\_modules} walks each package directory and yields the dotted module name of every \texttt{.py} file it finds. \texttt{importlib.import\_module} then imports it. Because every tool/resource/prompt module calls a decorator on \lstinline{mcp} at import time, this single loop is all that is needed to register every capability.
+
+\paragraph{Transport selection.}
+Two transports are supported:
+\begin{itemize}
+  \item \textbf{SSE} (default) — the server opens an HTTP endpoint. Suitable for any client that can speak HTTP; allows the client and server to run in separate processes.
+  \item \textbf{stdio} — the server communicates over standard input/output. Useful when embedded inside another process (e.g.\ a code editor plugin).
+\end{itemize}
+
+\paragraph{Shared instance (\texttt{mcp\_instance.py}).}
+\begin{lstlisting}[caption={mcp\_instance.py}]
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("my-mcp-server")
+\end{lstlisting}
+
+Every module imports \lstinline{mcp} from here. This guarantees decorators like \lstinline{@mcp.tool()} all register on the same \lstinline{FastMCP} object the server will start.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{The Client (\texttt{client.py})}
+% ══════════════════════════════════════════════════════════════════════════════
+
+The client is a self-contained terminal application. It connects to the MCP server, queries what is available, and enters an interactive chat loop driven by a local Ollama model.
+
+\begin{lstlisting}[caption={client.py --- startup and main()}]
+MODEL = "llama3.1:8b"
+
+async def main():
+    host = os.getenv("MCP_HOST", "localhost")
+    port = int(os.getenv("MCP_PORT", "8000"))
+    url = f"http://{host}:{port}/sse"
+
+    async with sse_client(url) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            tools_resp, resources_resp, templates_resp, prompts_resp = \
+                await asyncio.gather(
+                    session.list_tools(),
+                    session.list_resources(),
+                    session.list_resource_templates(),
+                    session.list_prompts(),
+                )
+
+            ollama_tools, known_uris, known_templates, \
+                template_regexes, known_prompts = \
+                process_server_capabilities(
+                    tools_resp, resources_resp,
+                    templates_resp, prompts_resp
+                )
+
+            print_capabilities(known_uris, known_templates, known_prompts)
+            await chat_loop(
+                session, ollama_tools, known_uris,
+                template_regexes, known_prompts
+            )
+\end{lstlisting}
+
+\subsection{Capability discovery}
+On startup the client issues four parallel MCP calls (\texttt{list\_tools}, \texttt{list\_resources}, \texttt{list\_resource\_templates}, \texttt{list\_prompts}) and hands the results to \texttt{process\_server\_capabilities} (defined in \texttt{client\_helper.py}). The outputs are:
+
+\begin{itemize}
+  \item \texttt{ollama\_tools} — tool definitions translated into the JSON schema format Ollama expects.
+  \item \texttt{known\_uris} — set of static resource URIs for \texttt{@mention} resolution.
+  \item \texttt{template\_regexes} — compiled regexes for URI template matching.
+  \item \texttt{known\_prompts} — set of prompt names for \texttt{/command} detection.
+\end{itemize}
+
+\subsection{The chat loop}
+
+\begin{lstlisting}[caption={chat\_loop}]
+async def chat_loop(session, ollama_tools, known_uris,
+                    template_regexes, known_prompts):
+    messages = []
+    while True:
+        try:
+            user_input = input(c("You: ", BOLD, BLUE)).strip()
+        except (EOFError, KeyboardInterrupt):
+            print(c("\nGoodbye!", DIM))
+            return
+
+        if user_input.lower() in ("exit", "quit"):
+            print(c("Goodbye!", DIM))
+            return
+
+        if not user_input:
+            continue
+
+        turn = await build_user_turn(
+            session, user_input, known_uris,
+            template_regexes, known_prompts
+        )
+        messages.extend(turn)
+        await run_ollama_turn(session, messages, ollama_tools)
+\end{lstlisting}
+
+The loop maintains the full \texttt{messages} list across turns, giving the model conversation memory. Each iteration:
+\begin{enumerate}
+  \item Reads a line of user input.
+  \item Calls \texttt{build\_user\_turn} to resolve any special syntax.
+  \item Calls \texttt{run\_ollama\_turn} to get a model response.
+\end{enumerate}
+
+\subsection{Building a user turn}
+
+\begin{lstlisting}[caption={build\_user\_turn}]
+async def build_user_turn(session, user_input, known_uris,
+                           template_regexes, known_prompts):
+    # /prompt_name key=val  ->  fetch prompt messages from server
+    parsed = parse_prompt_command(user_input, known_prompts)
+    if parsed is not None:
+        prompt_name, arguments = parsed
+        result = await session.get_prompt(
+            prompt_name,
+            arguments=arguments if arguments else None
+        )
+        return [
+            {"role": msg.role, "content": msg.content.text}
+            for msg in result.messages
+            if hasattr(msg.content, "text")
+        ]
+
+    # @uri mentions  ->  fetch resource content and prepend it
+    parts = []
+    for uri, is_template in parse_resource_mentions(
+        user_input, known_uris, template_regexes
+    ):
+        result = await session.read_resource(uri)
+        content_text = "\n".join(
+            block.text for block in result.contents
+            if hasattr(block, "text")
+        )
+        parts.append(f"Resource {uri}:\n{content_text}")
+
+    resource_context = "\n\n".join(parts) if parts else None
+    content = (
+        f"{user_input}\n\n{resource_context}"
+        if resource_context else user_input
+    )
+    return [{"role": "user", "content": content}]
+\end{lstlisting}
+
+Two special syntaxes are handled before sending input to the model:
+
+\begin{description}[leftmargin=3em]
+  \item[\texttt{/prompt\_name [key=val \ldots]}] Fetches the named prompt from the server and returns its messages directly, bypassing the normal user message. The messages are injected into the conversation as-is (with their original \texttt{role} values).
+  \item[\texttt{@uri}] Fetches the resource at \texttt{uri} (or a URI that matches a template) and prepends its text content to the user message.
+\end{description}
+
+\subsection{Running an Ollama turn}
+
+\begin{lstlisting}[caption={run\_ollama\_turn}]
+async def run_ollama_turn(session, messages, ollama_tools):
+    while True:
+        response = ollama.chat(
+            model=MODEL,
+            messages=messages,
+            tools=ollama_tools or None
+        )
+        assistant_message = response.message
+        messages.append(assistant_message)
+
+        if not assistant_message.tool_calls:
+            print(c("Assistant: ", BOLD, GREEN) + assistant_message.content)
+            return
+
+        for tool_call in assistant_message.tool_calls:
+            tool_name = tool_call.function.name
+            tool_args = dict(tool_call.function.arguments)
+            result = await session.call_tool(tool_name, tool_args)
+            result_text = "\n".join(
+                block.text for block in result.content
+                if hasattr(block, "text")
+            )
+            messages.append({"role": "tool", "content": result_text})
+\end{lstlisting}
+
+This function implements the standard \emph{agentic loop}:
+\begin{enumerate}
+  \item Send the current message history to the model.
+  \item If the model replies with plain text and no tool calls, print and return.
+  \item If the model requests tool calls, execute each one via the MCP session, append the result as a \texttt{tool} message, and loop back to step 1.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Adding New Capabilities}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Adding a tool}
+
+Create a new \texttt{.py} file anywhere inside \texttt{tools/}. Import the shared \lstinline{mcp} instance and decorate your function with \lstinline{@mcp.tool()}. The server will discover and register it automatically on the next start.
+
+\begin{lstlisting}[caption={tools/my\_new\_tool.py}]
+from mcp_instance import mcp
+
+
+@mcp.tool()
+async def my_new_tool(param_one: str, param_two: int = 0) -> dict:
+    """One-line description shown to the model.
+
+    Longer explanation if needed. The model uses both the function
+    signature and this docstring to decide when and how to call the tool.
+
+    Args:
+        param_one: Description of the first parameter.
+        param_two: Description of the second parameter.
+
+    Returns:
+        A dictionary with the result.
+    """
+    return {"result": f"processed {param_one} with offset {param_two}"}
+\end{lstlisting}
+
+\paragraph{Guidelines.}
+\begin{itemize}
+  \item Use \texttt{async def}; the server is fully async.
+  \item Type-annotate all parameters — FastMCP generates the JSON schema from annotations.
+  \item Write a descriptive docstring. The model reads it to decide when to call the tool.
+  \item Return a plain Python value (dict, str, list, etc.); FastMCP serialises it.
+\end{itemize}
+
+\subsection{Adding a resource}
+
+Create a new \texttt{.py} file inside \texttt{resources/}. Use a URI string as the decorator argument. The URI can contain \texttt{\{param\}} placeholders for templated resources.
+
+\begin{lstlisting}[caption={resources/my\_static\_resource.py — fixed URI}]
+from mcp_instance import mcp
+
+
+@mcp.resource("myapp://config/defaults")
+async def get_defaults() -> str:
+    """Return default application configuration."""
+    return "timeout=30\nretries=3\nlog_level=INFO"
+\end{lstlisting}
+
+\begin{lstlisting}[caption={resources/my\_template\_resource.py --- URI template}]
+from mcp_instance import mcp
+
+
+@mcp.resource("myapp://items/{item_id}")
+async def get_item(item_id: str) -> str:
+    """Fetch a specific item by ID.
+
+    Args:
+        item_id: The item identifier extracted from the URI.
+    """
+    # item_id is automatically extracted from the URI path
+    return f"Data for item: {item_id}"
+\end{lstlisting}
+
+\paragraph{Accessing a resource from the client.}
+Users type \texttt{@myapp://config/defaults} or \texttt{@myapp://items/42} in the prompt. The client resolves it against the known URIs and templates, fetches the content, and injects it into the message.
+
+\subsection{Adding a prompt}
+
+Create a new \texttt{.py} file inside \texttt{prompts/}. A prompt function returns a string (or a list of message dicts for multi-turn templates). Its parameters become the keyword arguments users can pass with \texttt{/prompt\_name key=val}.
+
+\begin{lstlisting}[caption={prompts/my\_prompt.py}]
+from mcp_instance import mcp
+
+
+@mcp.prompt()
+async def summarise_document(text: str, style: str = "bullet") -> str:
+    """Summarise a block of text.
+
+    Args:
+        text:  The document to summarise.
+        style: Output style - "bullet" or "paragraph".
+    """
+    return (
+        f"Summarise the following text in {style} form.\n\n"
+        f"Text:\n{text}"
+    )
+\end{lstlisting}
+
+\paragraph{Invoking from the client.}
+\begin{lstlisting}[language=bash, style=python, numbers=none]
+/summarise_document text="Hello world." style=bullet
+\end{lstlisting}
+
+The client detects the \texttt{/} prefix, matches the name against known prompts, and calls \texttt{session.get\_prompt} with the parsed keyword arguments.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Existing Modules Reference}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Tools}
+
+\subsubsection{\texttt{verify\_product\_transparency} (tools/coke\_product\_transparency.py)}
+
+Looks up a product code in an in-memory database and returns detailed transparency information: ingredients, sourcing, nutritional facts, sustainability metrics, and certifications. Returns a not-found message if the code is unknown, which can signal a counterfeit.
+
+\textbf{Parameter:} \texttt{product\_code: str} — e.g.\ \texttt{"COKE-355ML-001"}.
+
+\subsubsection{\texttt{query\_crisis\_protocol} (tools/coke\_crisis\_protocol.py)}
+
+Looks up a named crisis management protocol from an in-memory dictionary. Returns priority, step-by-step action list, and contact addresses. Returns the list of available protocol names when no match is found. The comments in the file illustrate how a real implementation would replace the dictionary with a RAG vector search.
+
+\textbf{Parameter:} \texttt{crisis\_type: str} — e.g.\ \texttt{"product recall"}, \texttt{"contamination"}.
+
+\subsection{Resources}
+
+\subsubsection{\texttt{coke://media/advertisements/\{ad\_id\}} (resources/coke\_advertisements.py)}
+
+URI template resource. Returns a URL and short description for a named advertisement asset. Example IDs: \texttt{hilltop-1971}, \texttt{polar-bears-1993}.
+
+\subsubsection{\texttt{coke://locations/mit-campus} (resources/coke\_campus\_locations.py)}
+
+Static resource. Reads and returns \texttt{resources/data/mit\_campus.txt} — a directory of Coca-Cola vending and dining locations on the MIT campus.
+
+\subsubsection{\texttt{coke://regulations/massachusetts/\{regulation\_id\}} (resources/coke\_regulations.py)}
+
+URI template resource. Reads \texttt{resources/data/massachusetts\_regulations.json} and returns the entry matching \texttt{regulation\_id} as formatted JSON. Example IDs: \texttt{bottle-bill}, \texttt{sugar-tax}, \texttt{labeling}, \texttt{school-sales}.
+
+\subsection{Prompts}
+
+\subsubsection{\texttt{evaluate\_beverage\_choice} (prompts/coke\_evaluate\_beverage.py)}
+
+Returns a detailed system prompt that guides the model through a five-step chain-of-thought for beverage selection: understanding the user's needs, evaluating options transparently, considering trade-offs, giving an honest recommendation, and educating on long-term patterns.
+
+\textbf{Parameter:} \texttt{beverage\_context: str} — e.g.\ \texttt{"choosing a drink for lunch"}.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\appendix
+% ══════════════════════════════════════════════════════════════════════════════
+
+\section{Client Helper (\texttt{client\_helper.py})}
+\label{appendix:client_helper}
+
+\texttt{client\_helper.py} contains all parsing logic and terminal formatting used by the client. It has no side effects at import time and carries no dependency on the MCP server.
+
+\subsection{ANSI colour helpers}
+
+\begin{lstlisting}[caption={Colour constants and the c() helper}]
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+DIM    = "\033[2m"
+CYAN   = "\033[36m"
+GREEN  = "\033[32m"
+YELLOW = "\033[33m"
+RED    = "\033[31m"
+BLUE   = "\033[34m"
+
+def c(text, *codes):
+    return "".join(codes) + str(text) + RESET
+\end{lstlisting}
+
+\texttt{c(text, *codes)} concatenates any number of ANSI escape codes before \texttt{text} and appends the reset code after it. Usage: \lstinline{c("hello", BOLD, GREEN)}.
+
+\subsection{URI template conversion}
+
+\begin{lstlisting}[caption={uri\_template\_to\_regex}]
+def uri_template_to_regex(template):
+    """Convert a URI template like 'myapp://data/{id}'
+    to a compiled regex."""
+    escaped = re.escape(template)
+    pattern = re.sub(
+        r'\\\{(\w+)\\\}',
+        r'(?P<\1>[^/]+)',
+        escaped
+    )
+    return re.compile(f'^{pattern}$')
+\end{lstlisting}
+
+Converts an RFC 6570-style URI template (e.g.\ \texttt{coke://regulations/massachusetts/\{regulation\_id\}}) into a compiled Python regex with named capture groups. This allows the client to check whether a user-typed \texttt{@uri} matches any template, without needing the MCP server to enumerate all possible parameterised values.
+
+\subsection{Capability processing}
+
+\begin{lstlisting}[caption={process\_server\_capabilities and build\_tools\_for\_ollama}]
+def process_server_capabilities(tools_resp, resources_resp,
+                                 templates_resp, prompts_resp):
+    ollama_tools = build_tools_for_ollama(tools_resp.tools)
+    known_uris = {str(r.uri) for r in resources_resp.resources}
+    known_templates = [
+        str(t.uriTemplate) for t in templates_resp.resourceTemplates
+    ]
+    template_regexes = [
+        uri_template_to_regex(t) for t in known_templates
+    ]
+    known_prompts = {p.name for p in prompts_resp.prompts}
+    return (ollama_tools, known_uris, known_templates,
+            template_regexes, known_prompts)
+
+
+def build_tools_for_ollama(tools):
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description or "",
+                "parameters": tool.inputSchema,
+            },
+        }
+        for tool in tools
+    ]
+\end{lstlisting}
+
+\texttt{process\_server\_capabilities} transforms the four raw MCP list responses into the data structures the client loop needs. \texttt{build\_tools\_for\_ollama} re-packages MCP tool descriptors into Ollama's \texttt{function} schema, which the Ollama Python library passes directly to the model.
+
+\subsection{Input parsing}
+
+\begin{lstlisting}[caption={Regex patterns and parsers}]
+RESOURCE_PATTERN = re.compile(r'@(\S+)')
+PROMPT_PATTERN   = re.compile(r'/(\w+)((?:\s+\w+=\S+)*)\s*$')
+KWARG_PATTERN    = re.compile(r'(\w+)=(\S+)')
+
+
+def parse_prompt_command(user_input, known_prompts):
+    match = PROMPT_PATTERN.match(user_input.strip())
+    if not match or match.group(1) not in known_prompts:
+        return None
+    prompt_name = match.group(1)
+    arguments = {k: v for k, v in KWARG_PATTERN.findall(match.group(2))}
+    return prompt_name, arguments
+
+
+def parse_resource_mentions(user_input, known_uris, template_regexes):
+    valid = []
+    for uri in RESOURCE_PATTERN.findall(user_input):
+        if uri in known_uris:
+            valid.append((uri, False))
+        elif any(r.match(uri) for r in template_regexes):
+            valid.append((uri, True))
+        else:
+            print(c(f"  x unknown resource: {uri}", RED))
+    return valid
+\end{lstlisting}
+
+\paragraph{\texttt{parse\_prompt\_command}.}
+Matches input of the form \texttt{/name [key=val \ldots]} against the known prompt names. Returns \texttt{(name, \{key: val, \ldots\})} on a match, or \texttt{None} if the input is not a prompt command or the name is not registered.
+
+\paragraph{\texttt{parse\_resource\_mentions}.}
+Finds all \texttt{@token} substrings in the input using \texttt{RESOURCE\_PATTERN}. Each token is checked first against the set of exact static URIs, then against every compiled template regex. Unrecognised URIs are printed as errors in red. Returns a list of \texttt{(uri, is\_template)} pairs.
+
+\subsection{\texttt{print\_capabilities}}
+
+\begin{lstlisting}[caption={print\_capabilities}]
+def print_capabilities(known_uris, known_templates, known_prompts):
+    print(c("MCP Chat", BOLD, CYAN)
+          + c("  -  type 'exit' or 'quit' to stop", DIM))
+    print()
+    print(c("Usage:", BOLD))
+    print(c("  @<uri>", CYAN)
+          + "                        attach a resource")
+    print(c("  @<uri-template-with-values>", CYAN)
+          + "   attach a resource template")
+    print(c("  /<prompt>", CYAN)
+          + c(" [key=val ...]", DIM)
+          + "        inject a prompt")
+    print()
+    if known_uris:
+        print(c("  Resources:          ", BOLD)
+              + c(', '.join(sorted(known_uris)), CYAN))
+    if known_templates:
+        print(c("  Resource templates: ", BOLD)
+              + c(', '.join(sorted(known_templates)), CYAN))
+    if known_prompts:
+        print(c("  Prompts:            ", BOLD)
+              + c(', '.join(sorted(known_prompts)), CYAN))
+    print()
+\end{lstlisting}
+
+Prints a usage banner with a live listing of all available resources, templates, and prompts discovered from the server. Shown once at startup so the user knows what they can reference.
+
+\end{document}
