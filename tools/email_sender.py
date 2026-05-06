@@ -1,5 +1,8 @@
 import smtplib
-from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import markdown as md
 
 from mcp_instance import mcp, load_email_credentials
 
@@ -12,18 +15,23 @@ def send_email(subject: str, body: str) -> str:
 
     Args:
         subject: The subject line of the email to be sent.
-        body: The main content/body of the email message.
+        body: The main content of the email in Markdown format. Supports headings, bold, italic,
+              lists, links, code blocks, and other standard Markdown syntax. A plain-text fallback
+              is generated automatically for clients that do not support HTML.
 
     Returns:
         A string indicating the success or failure of the email sending operation.
     """
     creds = load_email_credentials()
-    
-    msg = EmailMessage()
-    msg.set_content(body)
+
+    html_body = md.markdown(body)
+
+    msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = creds["email_user"]
     msg["To"] = creds["recipient_email"]
+    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     try:
         # Port 587 is standard for SMTP with STARTTLS (works well for Gmail and others)
